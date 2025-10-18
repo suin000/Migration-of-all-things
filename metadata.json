@@ -1,0 +1,5 @@
+{
+  "name": "万物迁移",
+  "description": "Migrate a product from one image into a scene in another image using a vision model.",
+  "requestFramePermissions": []
+}

@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>万物迁移 Gemini</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Roboto+Mono&family=Permanent+Marker&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="index.css" />
+    <script type="importmap">
+      {
+        "imports": {
+          "@google/genai": "https://esm.sh/@google/genai@^1.4.0",
+          "react/": "https://aistudiocdn.com/react@^19.1.1/",
+          "react": "https://aistudiocdn.com/react@^19.1.1",
+          "react-dom/": "https://aistudiocdn.com/react-dom@^19.1.1/",
+          "framer-motion": "https://aistudiocdn.com/framer-motion@^11.3.12"
+        }
+      }
+    </script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  </head>
+  <body class="bg-[#1E1F20] font-['Inter'] text-gray-300 antialiased">
+    <div
+      class="min-h-screen flex items-center justify-center p-4"
+      role="main"
+    >
+      <div
+        class="bg-[#2a2b2e] px-8 pt-8 pb-6 rounded-2xl shadow-2xl w-full max-w-6xl space-y-6"
+      >
+        <div class="text-center">
+          <h1 class="text-3xl font-bold text-white tracking-tight">
+            万物迁移
+          </h1>
+          <p class="text-gray-400 mt-2 text-sm">
+            上传一张产品图和一张场景图，AI 会将产品迁移到场景中。
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+          <!-- Left Column (Output) -->
+          <div class="lg:sticky lg:top-8 space-y-4">
+            <div
+              id="output-container"
+              class="w-full relative aspect-square bg-[#353739] border-2 border-dashed border-gray-600 rounded-lg flex items-center justify-center text-gray-400"
+            >
+              <div id="output-placeholder" class="text-center">
+                <svg
+                  class="mx-auto h-12 w-12 text-gray-500"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1"
+                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                  />
+                </svg>
+                <span
+                  class="mt-2 block font-medium text-sm text-gray-500"
+                  >生成的图像将在此处显示</span
+                >
+              </div>
+              <div
+                id="loader"
+                class="absolute inset-0 flex items-center justify-center bg-[#2a2b2e]/80 rounded-lg hidden"
+              >
+                <div
+                  class="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500"
+                ></div>
+              </div>
+              <img
+                id="output-image"
+                alt="生成的图像"
+                class="absolute h-full w-full object-contain rounded-lg hidden cursor-pointer"
+              />
+              <button
+                id="history-button"
+                class="absolute top-2 left-2 p-2 bg-black bg-opacity-50 rounded-full text-white hover:bg-opacity-75 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                aria-label="查看生成历史"
+                title="历史记录"
+                disabled
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                  <path d="M3 3v5h5"></path>
+                  <path d="M12 7v5l4 2"></path>
+                </svg>
+              </button>
+              <div
+                id="output-actions"
+                class="absolute top-2 right-2 flex gap-2 hidden"
+              >
+                <button
+                  id="tune-button"
+                  class="p-2 bg-black bg-opacity-50 rounded-full text-white hover:bg-opacity-75 transition-all"
+                  aria-label="微调图像"
+                  title="微调"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="M20 7h-9" />
+                    <path d="M14 17H5" />
+                    <circle cx="17" cy="17" r="3" />
+                    <circle cx="7" cy="7" r="3" />
+                  </svg>
+                </button>
+                <button
+                  id="regenerate-button"
+                  class="p-2 bg-black bg-opacity-50 rounded-full text-white hover:bg-opacity-75 transition-all"
+                  aria-label="重新生成图像"
+                  title="重新生成"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path
+                      d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"
+                    />
+                    <path d="M21 3v5h-5" />
+                    <path
+                      d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"
+                    />
+                    <path d="M3 21v-5h5" />
+                  </svg>
+                </button>
+                <button
+                  id="download-button"
+                  class="p-2 bg-black bg-opacity-50 rounded-full text-white hover:bg-opacity-75 transition-all"
+                  aria-label="下载图像"
+                  title="下载"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="7 10 12 15 17 10" />
+                    <line x1="12" y1="15" x2="12" y2="3" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div id="status" class="text-center text-gray-400 min-h-[24px]"></div>
+             <!-- Fidelity Feedback Section -->
+            <div id="feedback-container" class="space-y-4 hidden">
+              <div id="saved-feedback-display" class="bg-[#353739] p-3 rounded-lg space-y-2">
+                <h3 class="text-sm font-semibold text-white">生效中的保真度规则</h3>
+                <ul id="feedback-list" class="space-y-1 pl-1">
+                   <!-- Feedback items will be injected here -->
+                </ul>
+              </div>
+              <div class="space-y-2">
+                <label for="feedback-input" class="text-sm font-medium text-gray-400">
+                  AI 是否错误地更改了产品？添加反馈以便下次修复。
+                </label>
+                <div class="flex gap-2">
+                  <input type="text" id="feedback-input" class="flex-grow w-full bg-[#353739] border border-gray-600 rounded-lg p-2 text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-200" placeholder="例如：龙角应该是弯曲的">
+                  <button id="save-feedback-button" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200">
+                    保存
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+
+          <!-- Right Column (Inputs & Controls) -->
+          <div class="flex flex-col space-y-4">
+            <!-- Inputs -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <!-- Product Image Upload -->
+              <div class="flex flex-col items-center space-y-2">
+                <label for="product-upload" class="w-full cursor-pointer">
+                  <div
+                    id="product-preview-container"
+                    class="relative w-full h-48 bg-[#353739] border-2 border-dashed border-gray-600 rounded-lg flex items-center justify-center text-gray-400 hover:bg-[#3d3f42] transition-colors"
+                  >
+                    <div id="product-placeholder" class="text-center">
+                      <svg
+                        class="mx-auto h-10 w-10"
+                        stroke="currentColor"
+                        fill="none"
+                        viewBox="0 0 48 48"
+                        aria-hidden="true"
+                      >
+                        <path
+                          d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        ></path>
+                      </svg>
+                      <span class="mt-2 block font-medium text-sm"
+                        >产品图</span
+                      >
+                    </div>
+                    <img
+                      id="product-preview"
+                      class="absolute h-full w-full object-contain rounded-lg hidden"
+                      alt="产品预览"
+                    />
+                    <canvas
+                      id="product-outline-canvas"
+                      class="absolute top-0 left-0 w-full h-full pointer-events-none"
+                    ></canvas>
+                  </div>
+                </label>
+                <input
+                  type="file"
+                  id="product-upload"
+                  class="hidden"
+                  accept="image/*"
+                />
+              </div>
+
+              <!-- Scene Image Upload -->
+              <div class="flex flex-col items-center space-y-2">
+                <label for="scene-upload" class="w-full cursor-pointer">
+                  <div
+                    id="scene-preview-container"
+                    class="relative w-full h-48 bg-[#353739] border-2 border-dashed border-gray-600 rounded-lg flex items-center justify-center text-gray-400 hover:bg-[#3d3f42] transition-colors"
+                  >
+                    <div id="scene-placeholder" class="text-center">
+                      <svg
+                        class="mx-auto h-10 w-10"
+                        stroke="currentColor"
+                        fill="none"
+                        viewBox="0 0 48 48"
+                        aria-hidden="true"
+                      >
+                        <path
+                          d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        ></path>
+                      </svg>
+                      <span class="mt-2 block font-medium text-sm"
+                        >场景图</span
+                      >
+                    </div>
+                    <img
+                      id="scene-preview"
+                      class="absolute h-full w-full object-contain rounded-lg hidden"
+                      alt="场景预览"
+                    />
+                  </div>
+                </label>
+                <input
+                  type="file"
+                  id="scene-upload"
+                  class="hidden"
+                  accept="image/*"
+                />
+              </div>
+            </div>
+
+            <!-- Product Controls -->
+            <div class="flex flex-col items-center space-y-2">
+              <div
+                id="product-controls"
+                class="grid grid-cols-2 gap-2 w-full"
+              >
+                <button
+                  id="remove-background-button"
+                  class="w-full bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200 hidden disabled:opacity-50 disabled:cursor-wait col-span-2"
+                >
+                  隔离产品
+                </button>
+                <button
+                  id="edit-mask-button"
+                  class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200 hidden disabled:opacity-50 disabled:cursor-wait col-span-2"
+                >
+                  编辑蒙版
+                </button>
+                <button
+                  id="outline-button"
+                  class="w-full bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200 hidden disabled:opacity-50 disabled:cursor-wait col-span-2"
+                >
+                  勾勒产品轮廓
+                </button>
+              </div>
+              <div
+                id="mask-preview-container"
+                class="w-full p-2 bg-[#353739] rounded-lg mt-2 hidden"
+              >
+                <p class="text-xs text-center text-gray-400 mb-2">
+                  产品蒙版
+                </p>
+                <img
+                  id="mask-preview"
+                  class="w-20 h-20 object-contain mx-auto rounded-md"
+                  alt="产品蒙版预览"
+                />
+              </div>
+               <!-- MASK SCALE CONTROLS -->
+              <div id="mask-scale-container" class="w-full p-3 bg-[#353739] rounded-lg mt-2 hidden">
+                  <label for="mask-scale-slider" class="text-xs text-center block text-gray-400 mb-2">调整产品比例 (仅在“产品适应场景”模式下生效)</label>
+                  <div class="flex items-center gap-3 px-2">
+                      <input id="mask-scale-slider" type="range" min="25" max="200" value="100" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer">
+                      <span id="mask-scale-value" class="text-sm font-mono text-white w-12 text-center">100%</span>
+                  </div>
+              </div>
+              <p
+                id="outline-info"
+                class="text-xs text-gray-500 mt-2 text-center hidden"
+              >
+                勾勒轮廓会同时生成一个精确的产品蒙版，用于高质量的迁移。
+              </p>
+            </div>
+
+            <!-- Optional Prompt -->
+            <div class="space-y-4">
+              <textarea
+                id="prompt-input"
+                rows="2"
+                class="w-full bg-[#353739] border border-gray-600 rounded-lg p-4 text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-200 resize-none"
+                placeholder="可选：告诉 AI 将产品放置在何处"
+                aria-label="可选的迁移提示"
+              ></textarea>
+              <div
+                id="suggested-prompts-container"
+                class="flex flex-wrap gap-2"
+              >
+                <!-- Prompts will be injected here by JS -->
+              </div>
+            </div>
+
+            <!-- Migration Mode -->
+            <div class="space-y-2">
+              <label
+                class="block text-sm font-medium text-gray-400 text-center"
+                >迁移模式</label
+              >
+              <div
+                id="migration-mode-toggle"
+                class="grid grid-cols-2 gap-1 bg-[#353739] p-1 rounded-lg max-w-md mx-auto"
+              >
+                <button
+                  id="mode-product-to-scene"
+                  class="px-4 py-2 text-sm font-semibold rounded-md transition-colors duration-200"
+                >
+                  产品适应场景
+                </button>
+                <button
+                  id="mode-scene-to-product"
+                  class="px-4 py-2 text-sm font-semibold rounded-md transition-colors duration-200"
+                >
+                  场景匹配产品
+                </button>
+              </div>
+            </div>
+
+            <!-- Generation Settings -->
+            <div class="space-y-4">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                <div>
+                  <label
+                    class="block text-sm font-medium text-gray-400 mb-2"
+                    >质量设置</label
+                  >
+                  <div
+                    id="quality-settings-toggle"
+                    class="flex items-center space-x-2 bg-[#353739] p-1 rounded-lg"
+                  >
+                    <button
+                      data-quality="fast"
+                      class="quality-button px-4 py-1 text-sm font-semibold rounded-md transition-colors duration-200 text-gray-400 w-full"
+                    >
+                      快速
+                    </button>
+                    <button
+                      data-quality="balanced"
+                      class="quality-button px-4 py-1 text-sm font-semibold rounded-md transition-colors duration-200 bg-blue-600 text-white w-full"
+                    >
+                      均衡
+                    </button>
+                    <button
+                      data-quality="high-quality"
+                      class="quality-button px-4 py-1 text-sm font-semibold rounded-md transition-colors duration-200 text-gray-400 w-full"
+                    >
+                      高质量
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <label
+                    for="seed-input"
+                    class="block text-sm font-medium text-gray-400 mb-2"
+                    >种子（可选）</label
+                  >
+                  <input
+                    type="number"
+                    id="seed-input"
+                    class="w-full bg-[#353739] border border-gray-600 rounded-lg p-2 text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-200"
+                    placeholder="输入数字以获得可复现的结果"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <button
+              id="generate-button"
+              class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-blue-400 focus:ring-opacity-50 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+              disabled
+            >
+              迁移
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mask Editor Modal -->
+    <div
+      id="mask-editor-modal"
+      class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50 hidden"
+    >
+      <div
+        class="bg-[#2a2b2e] rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col"
+      >
+        <div
+          class="p-4 border-b border-gray-700 flex justify-between items-center"
+        >
+          <div class="flex flex-col">
+            <h2 class="text-xl font-bold text-white">蒙版编辑器</h2>
+            <p class="text-sm text-gray-400">
+              擦除红色覆盖区域，以允许 AI 修改这些区域，从而实现更好的场景交互。
+            </p>
+          </div>
+          <button id="mask-editor-close" class="text-gray-400 hover:text-white">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        <div
+          class="flex-grow p-4 overflow-y-auto flex items-center justify-center"
+        >
+          <canvas
+            id="mask-editor-canvas"
+            class="max-w-full max-h-[65vh] object-contain cursor-crosshair rounded-lg"
+          ></canvas>
+        </div>
+        <div class="p-4 border-t border-gray-700 flex justify-end gap-2">
+          <button
+            id="mask-editor-cancel"
+            class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition-colors"
+          >
+            取消
+          </button>
+          <button
+            id="mask-editor-save"
+            class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors"
+          >
+            保存更改
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Fine-tune Modal -->
+    <div
+      id="tune-modal"
+      class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50 hidden"
+    >
+      <div
+        class="bg-[#2a2b2e] rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col"
+      >
+        <div
+          class="p-4 border-b border-gray-700 flex justify-between items-center"
+        >
+          <h2 class="text-xl font-bold text-white">微调图像</h2>
+          <button id="tune-modal-close" class="text-gray-400 hover:text-white">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        <div
+          class="flex-grow p-4 overflow-y-auto grid grid-cols-1 md:grid-cols-2 gap-4"
+        >
+          <div
+            class="relative flex items-center justify-center bg-[#1E1F20] rounded-lg"
+          >
+            <img
+              id="tune-image"
+              class="max-w-full max-h-[65vh] object-contain"
+              alt="待微调的图像"
+            />
+            <div
+              id="tune-loader"
+              class="absolute inset-0 flex items-center justify-center bg-[#2a2b2e]/80 rounded-lg hidden"
+            >
+              <div
+                class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"
+              ></div>
+            </div>
+          </div>
+          <div class="flex flex-col space-y-4">
+            <p class="text-gray-400 text-sm">
+              描述您想要进行的更改。例如：“将产品放大 20%”或“将灯光调暖”。
+            </p>
+            <textarea
+              id="tune-prompt"
+              rows="4"
+              class="w-full bg-[#353739] border border-gray-600 rounded-lg p-3 text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-200 resize-none"
+              placeholder="输入微调指令..."
+            ></textarea>
+            <div class="flex gap-2 mt-auto">
+              <button
+                id="tune-cancel-button"
+                class="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition-colors"
+              >
+                取消
+              </button>
+              <button
+                id="tune-apply-button"
+                class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors"
+              >
+                应用
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- History Modal -->
+    <div
+      id="history-modal"
+      class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50 hidden"
+    >
+      <div
+        class="bg-[#2a2b2e] rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col"
+      >
+        <div
+          class="p-4 border-b border-gray-700 flex justify-between items-center"
+        >
+          <h2 class="text-xl font-bold text-white">生成历史</h2>
+          <button id="history-modal-close" class="text-gray-400 hover:text-white">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        <div
+          id="history-items-container"
+          class="flex-grow p-4 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4"
+        >
+          <!-- History items will be injected here -->
+          <p
+            id="history-empty-message"
+            class="text-gray-400 col-span-full text-center"
+          >
+            暂无历史记录。
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Lightbox Modal -->
+    <div
+      id="lightbox-modal"
+      class="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center p-4 z-50 hidden opacity-0 transition-opacity duration-300"
+    >
+      <img
+        id="lightbox-image"
+        class="max-w-[95vw] max-h-[95vh] object-contain select-none transition-transform duration-200 ease-out"
+        alt="放大视图"
+        style="transform: scale(1) translate(0px, 0px)"
+      />
+      <button
+        id="lightbox-close"
+        class="absolute top-4 right-6 text-white text-5xl font-light hover:text-gray-300 transition-colors"
+        aria-label="关闭图像视图"
+      >
+        &times;
+      </button>
+    </div>
+
+    <script type="module" src="index.tsx"></script>
+
+    <div id="banner-root"></div>
+    <script type="text/babel" data-type="module">
+      import React, { useState, useEffect } from 'react';
+      import { createRoot } from 'react-dom/client';
+      import { motion, AnimatePresence } from 'framer-motion';
+
+      const REMIX_IDEAS = [
+        "生成电影海报。",
+        "可视化产品植入。",
+        "重新构想您的角色设计。",
+        "创建新场景。",
+        "预览不同的镜头。",
+      ];
+
+      const CloseIcon = () => (
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      );
+
+      const Banner = () => {
+          const [isVisible, setIsVisible] = useState(true);
+          const [index, setIndex] = useState(0);
+
+          useEffect(() => {
+              const intervalId = setInterval(() => {
+                  setIndex(prevIndex => (prevIndex + 1) % REMIX_IDEAS.length);
+              }, 3500);
+
+              return () => clearInterval(intervalId);
+          }, []);
+
+          const handleSelectKeyClick = async (e) => {
+            e.preventDefault();
+            if (window.aistudio?.openSelectKey) {
+              await window.aistudio.openSelectKey();
+            } else {
+              console.log('window.aistudio.openSelectKey() not available.');
+              alert('此环境中无法选择 API 密钥。');
+            }
+          };
+          
+          if (!isVisible) {
+            return null;
+          }
+
+          return (
+              <header className="app-banner">
+                  <div className="app-banner-content">
+                      <div className="banner-left">
+                          <p>由 Gemini API 提供支持</p>
+                      </div>
+                      <div className="remix-ideas">
+                          <span className="remix-prompt">改编此应用...</span>
+                          <div className="remix-text-container">
+                              <AnimatePresence mode="wait">
+                                  <motion.span
+                                      key={index}
+                                      initial={{ opacity: 0, y: 10 }}
+                                      animate={{ opacity: 1, y: 0 }}
+                                      exit={{ opacity: 0, y: -10 }}
+                                      transition={{ duration: 0.4, ease: "easeInOut" }}
+                                      className="remix-text"
+                                  >
+                                      {REMIX_IDEAS[index]}
+                                  </motion.span>
+                              </AnimatePresence>
+                          </div>
+                      </div>
+                      <div className="banner-right">
+                          <div className="banner-buttons">
+                              <a
+                                  href="https://aistudio.google.com/apps"
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="banner-button button-gemini-chat"
+                              >
+                                  AI Studio 上的应用
+                              </a>
+                              <a
+                                  href="#"
+                                  onClick={handleSelectKeyClick}
+                                  className="banner-button button-ai-studio"
+                              >
+                                  添加您的 API 密钥
+                              </a>
+                          </div>
+                          <button
+                            className="close-button"
+                            onClick={() => setIsVisible(false)}
+                            aria-label="关闭通知">
+                            <CloseIcon />
+                          </button>
+                      </div>
+                  </div>
+              </header>
+          );
+      };
+
+      const container = document.getElementById('banner-root');
+      if (container) {
+        const root = createRoot(container);
+        root.render(<React.StrictMode><Banner /></React.StrictMode>);
+      }
+    </script>
+  </body>
+</html>
